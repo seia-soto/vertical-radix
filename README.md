@@ -6,13 +6,13 @@ The derived algorithm from Radix trie with up-and-down relationship.
 
 ```typescript
 export interface INodeStringified {
-    key: string;
-    children: INodeStringified[];
+    n: string;
+    c: INodeStringified[];
 }
 export declare class Node {
     #private;
-    key: string;
-    children: Node[];
+    n: string;
+    c: Node[];
     constructor(key?: string, structure?: INodeStringified);
     insert(x: string): void;
     delete(x: string): void;
@@ -22,7 +22,7 @@ export declare class Node {
         at: Node;
         x: string;
     };
-    stringify(beautify: boolean): string;
+    stringify(beautify?: boolean): string;
 }
 ```
 
@@ -98,6 +98,6 @@ const result = root.find('alpha');
 */
 ```
 
-### `stringify(beautify: boolean): string`
+### `stringify(beautify?: boolean): string`
 
 Stringify the tree assuming the `Node` is the root entry.

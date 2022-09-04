@@ -1,20 +1,20 @@
 export interface INodeStringified {
-  key: string,
-  children: INodeStringified[]
+  n: string,
+  c: INodeStringified[]
 }
 
 export class Node {
-	key: string;
-	children: Node[] = [];
+	n: string;
+	c: Node[] = [];
 
 	constructor(key: string = '', structure?: INodeStringified) {
-		this.key = key;
+		this.n = key;
 
 		if (!structure) {
 			return;
 		}
 
-		const queue: { parent: Node, child: INodeStringified }[] = structure.children.map(child => ({parent: this, child}));
+		const queue: { parent: Node, child: INodeStringified }[] = structure.c.map(child => ({parent: this, child}));
 
 		for (; ;) {
 			const entry = queue.shift();
@@ -23,12 +23,12 @@ export class Node {
 				break;
 			}
 
-			const derive = new Node(entry.child.key);
+			const derive = new Node(entry.child.n);
 
-			for (let i = 0; i < entry.child.children.length; i++) {
+			for (let i = 0; i < entry.child.c.length; i++) {
 				queue.push({
 					parent: derive,
-					child: entry.child.children[i],
+					child: entry.child.c[i],
 				});
 			}
 
@@ -64,7 +64,7 @@ export class Node {
 		}
 
 		const edge = this.#calculateOverlapPosition([
-			...overlaps.map(overlap => overlap.key),
+			...overlaps.map(overlap => overlap.n),
 			part,
 		]);
 
@@ -94,26 +94,26 @@ export class Node {
 	}
 
 	#add(child: Node) {
-		this.children.push(child);
+		this.c.push(child);
 	}
 
 	#remove(key: string) {
-		const i = this.children.findIndex(child => child.key === key);
+		const i = this.c.findIndex(child => child.n === key);
 
 		if (i >= 0) {
-			this.children.splice(i, 1);
+			this.c.splice(i, 1);
 		}
 	}
 
 	is(x: string) {
-		return this.key === x;
+		return this.n === x;
 	}
 
 	find(x: string) {
 		let root: Node = this;
 
 		for (; ;) {
-			const node = root.children.find(child => x.startsWith(child.key));
+			const node = root.c.find(child => x.startsWith(child.n));
 
 			if (!node) {
 				return {
@@ -131,16 +131,16 @@ export class Node {
 				};
 			}
 
-			x = x.slice(node.key.length);
+			x = x.slice(node.n.length);
 			root = node;
 		}
 	}
 
 	#overlap(x: string) {
-		return this.children
+		return this.c
 			.filter(child => {
 				for (let i = 1; i < x.length; i++) {
-					if (child.key.startsWith(x.slice(0, i))) {
+					if (child.n.startsWith(x.slice(0, i))) {
 						return true;
 					}
 				}
@@ -150,9 +150,9 @@ export class Node {
 	}
 
 	#shrink(edge: number) {
-		this.key = this.key.slice(edge);
+		this.n = this.n.slice(edge);
 
-		const nodes: Node[] = this.children;
+		const nodes: Node[] = this.c;
 
 		for (;;) {
 			const node = nodes.shift();
@@ -161,12 +161,12 @@ export class Node {
 				break;
 			}
 
-			node.key = node.key.slice(edge);
-			nodes.push(...node.children);
+			node.n = node.n.slice(edge);
+			nodes.push(...node.c);
 		}
 	}
 
-	stringify(beautify: boolean) {
+	stringify(beautify?: boolean) {
 		if (beautify) {
 			return JSON.stringify(this, null, 2);
 		}
