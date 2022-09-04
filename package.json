@@ -2,7 +2,7 @@
   "name": "@seia/vertical-radix",
   "author": "HoJeong Go <seia@outlook.kr>",
   "main": "out/index.js",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "The derived algorithm from Radix trie with up-and-down relationship.",
   "license": "ISC",
   "keywords": [
@@ -15,7 +15,8 @@
     "url": "https://github.com/seia-soto/vertical-radix.git"
   },
   "scripts": {
-    "build": "swc index.ts -d out --config-file .swcrc && tsc index.ts --d --outDir out --emitDeclarationOnly --target es2022"
+    "build": "swc index.ts -d out --config-file .swcrc && tsc index.ts --d --outDir out --emitDeclarationOnly --target es2022",
+    "release": "standard-version"
   },
   "devDependencies": {
     "@sinclair/typebox": "^0.24.28",
@@ -26,6 +27,7 @@
     "@typescript-eslint/parser": "^5.35.1",
     "eslint": ">=8.14.0",
     "eslint-config-xo": "^0.42.0",
+    "standard-version": "^9.5.0",
     "tslib": "^2.4.0",
     "typescript": "^4.8.2"
   }
