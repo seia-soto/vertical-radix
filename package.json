@@ -1,5 +1,5 @@
 {
-  "name": "@seia/vertical-radix",
+  "name": "vertical-radix",
   "author": "HoJeong Go <seia@outlook.kr>",
   "main": "out/index.js",
   "version": "1.0.1",
