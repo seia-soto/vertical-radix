@@ -32,19 +32,7 @@ export class Node {
 				});
 			}
 
-			entry.parent.#add(derive);
-		}
-	}
-
-	#calculateOverlapPosition(overlaps: string[]) {
-		for (let i = 0; ; i++) {
-			const diff = overlaps[0][i];
-
-			for (let k = 1; k < overlaps.length; k++) {
-				if (overlaps[k][i] !== diff) {
-					return i;
-				}
-			}
+			entry.parent.add(derive);
 		}
 	}
 
@@ -55,53 +43,53 @@ export class Node {
 			return;
 		}
 
-		const overlaps = at.#overlap(part);
+		const overlaps = at.overlap(part);
 
 		if (!overlaps.length) {
-			at.#add(new Node(part));
+			at.add(new Node(part));
 
 			return;
 		}
 
-		const edge = this.#calculateOverlapPosition([
-			...overlaps.map(overlap => overlap.n),
-			part,
-		]);
+		const edge = Math.min(...overlaps.map(overlap => overlap.size));
+		const key = part.slice(0, edge);
 
-		const deriveKey = part.slice(0, edge);
-		const deriveNode = new Node(deriveKey);
+		const parent = new Node(key);
 
-		// Create branch for part
-		deriveNode.#add(new Node(part.slice(edge)));
+		parent.insert(part.slice(edge));
 
-		// Append branches for overlaps
 		for (let i = 0; i < overlaps.length; i++) {
-			const overlap = overlaps[i];
+			const removed = at.remove(overlaps[i].node.n);
 
-			overlap.#shrink(edge);
-			deriveNode.#add(overlap);
+			if (removed) {
+				removed.n = removed.n.slice(edge);
+
+				parent.add(removed);
+			}
 		}
 
-		at.#add(deriveNode);
+		at.add(parent);
 	}
 
 	delete(x: string) {
 		const {found, at, x: key} = this.find(x);
 
 		if (found) {
-			at.#remove(key);
+			at.remove(key);
 		}
 	}
 
-	#add(child: Node) {
+	add(child: Node) {
 		this.c.push(child);
 	}
 
-	#remove(key: string) {
+	remove(key: string) {
 		const i = this.c.findIndex(child => child.n === key);
 
 		if (i >= 0) {
-			this.c.splice(i, 1);
+			const [one] = this.c.splice(i, 1);
+
+			return one;
 		}
 	}
 
@@ -136,34 +124,25 @@ export class Node {
 		}
 	}
 
-	#overlap(x: string) {
-		return this.c
-			.filter(child => {
-				for (let i = 1; i < x.length; i++) {
-					if (child.n.startsWith(x.slice(0, i))) {
-						return true;
-					}
+	overlap(x: string) {
+		const overlaps: { node: Node, size: number }[] = [];
+
+		for (let i = 0; i < this.c.length; i++) {
+			let found = false;
+
+			for (let k = x.length; !found && k > 0; k--) {
+				if (this.c[i].n.startsWith(x.slice(0, k))) {
+					overlaps.push({
+						node: this.c[i],
+						size: k,
+					});
+
+					found = true;
 				}
-
-				return false;
-			});
-	}
-
-	#shrink(edge: number) {
-		this.n = this.n.slice(edge);
-
-		const nodes: Node[] = this.c;
-
-		for (;;) {
-			const node = nodes.shift();
-
-			if (!node) {
-				break;
 			}
-
-			node.n = node.n.slice(edge);
-			nodes.push(...node.c);
 		}
+
+		return overlaps;
 	}
 
 	stringify(beautify?: boolean) {
@@ -173,4 +152,114 @@ export class Node {
 
 		return JSON.stringify(this);
 	}
+
+	flatten(prefix: string = '') {
+		const keys: string[] = [];
+		const entries: { prefix: string, node: Node }[] = [{prefix, node: this}];
+
+		for (; ;) {
+			const entry = entries.shift();
+
+			if (!entry) {
+				break;
+			}
+
+			const {prefix: localPrefix, node} = entry;
+
+			if (!node.c.length) {
+				keys.push(localPrefix + node.n);
+
+				continue;
+			}
+
+			entries.push(...node.c.map(child => ({prefix: localPrefix + node.n, node: child})));
+		}
+
+		return keys;
+	}
 }
+
+export type TDescribleNode = { node: Node, from: number, name: string }
+
+// eslint-disable-next-line no-unused-vars
+export type TLookupProcessor = (candicates: TDescribleNode[], matches: TDescribleNode[], candicate: TDescribleNode, x: string) => void
+
+export interface ILookupOption {
+	offset: number,
+}
+
+export const lookup = (
+	root: Node,
+	x: string,
+	processor: TLookupProcessor,
+	options: ILookupOption = {
+		offset: 0,
+	},
+) => {
+	const matches: TDescribleNode[] = [];
+	const candicates: TDescribleNode[] = [{node: root, from: options.offset, name: x.slice(0, options.offset)}];
+
+	for (; ;) {
+		const candicate = candicates.shift();
+
+		if (!candicate) {
+			break;
+		}
+
+		processor(candicates, matches, candicate, x);
+	}
+
+	return matches;
+};
+
+export const lookupProcessorByPrefixingToken: TLookupProcessor = (candicates, matches, candicate, x) => {
+	const {node, from, name} = candicate;
+	const part = x.slice(from);
+
+	for (let i = 0; i < node.c.length; i++) {
+		if (
+			!node.c[i].n.startsWith(part)
+			&& !part.startsWith(node.c[i].n)
+		) {
+			continue;
+		}
+
+		const remaining = part.length - node.c[i].n.length;
+
+		if (remaining > 0) {
+			candicates.push({node: node.c[i], from: from + remaining, name: name + node.c[i].n});
+		} else {
+			matches.push({node: node.c[i], from, name: name + node.c[i].n});
+		}
+	}
+};
+
+export const lookupProcessorByTrailingToken: TLookupProcessor = (candicates, matches, candicate, x) => {
+	const {node, from, name} = candicate;
+	const part = x.slice(from);
+
+	for (let i = 0; i < node.c.length; i++) {
+		if (node.c[i].n.endsWith(part)) {
+			matches.push({node: node.c[i], from, name: name + node.c[i].n});
+		} else if (part.startsWith(node.c[i].n)) {
+			candicates.push({node: node.c[i], from: from + node.c[i].n.length, name: name + node.c[i].n});
+		} else {
+			candicates.push({node: node.c[i], from, name: name + node.c[i].n});
+		}
+	}
+};
+
+export const lookupProcessorByIntermediateToken: TLookupProcessor = (candicates, matches, candicate, x) => {
+	const {node, from, name} = candicate;
+
+	for (let i = 0; i < node.c.length; i++) {
+		if (
+			(!from && node.c[i].n.includes(x))
+			|| (from && node.c[i].n.startsWith(x.slice(from)))
+		) {
+			matches.push({node: node.c[i], from, name: name + node.c[i].n});
+		} else {
+			candicates.push({node: node.c[i], from, name: name + node.c[i].n});
+		}
+	}
+};
