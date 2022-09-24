@@ -19,30 +19,32 @@ export declare class Node {
     remove(key: string): Node;
     is(x: string): boolean;
     find(x: string): {
-        found: boolean;
-        at: Node;
-        x: string;
+        readonly found: false;
+        readonly node: any;
+        readonly parent: Node;
+        readonly x: string;
+    } | {
+        readonly found: true;
+        readonly node: Node;
+        readonly parent: Node;
+        readonly x: string;
     };
     overlap(x: string): {
         node: Node;
         size: number;
     }[];
     stringify(beautify?: boolean): string;
-    flatten(prefix?: string): string[];
+    flatten(prefix?: string): {
+        prefix: string;
+        node: Node;
+    }[];
 }
-export declare type TDescribleNode = {
+interface ILookupIntermediateElement {
     node: Node;
-    from: number;
-    name: string;
-};
-export declare type TLookupProcessor = (candicates: TDescribleNode[], matches: TDescribleNode[], candicate: TDescribleNode, x: string) => void;
-export interface ILookupOption {
+    prefix: string;
     offset: number;
 }
-export declare const lookup: (root: Node, x: string, processor: TLookupProcessor, options?: ILookupOption) => TDescribleNode[];
-export declare const lookupProcessorByPrefixingToken: TLookupProcessor;
-export declare const lookupProcessorByTrailingToken: TLookupProcessor;
-export declare const lookupProcessorByIntermediateToken: TLookupProcessor;
+export declare const lookup: (root: Node, x: string) => ILookupIntermediateElement[];
 ```
 
 ### `Node.prototype.n: string`
@@ -193,9 +195,10 @@ true
 */
 ```
 
-### `Node.prototype.find(x: string): {found: boolean; at: Node; x: string;}`
+### `Node.prototype.find(x: string): {found: boolean; parent: Node; node: Node; x: string;}`
 
 Find entry if exists returning the last accessed node and substring of initial `x`.
+The `parent` property refers to parent node that we found `node`.
 
 ```typescript
 (() => {
@@ -232,9 +235,10 @@ Find all overlapping entries with its overlap size of the node name or key.
 
 Stringify the tree assuming the `Node` is the root entry.
 
-### `Node.prototype.flatten(prefix?: string): string[]`
+### `Node.prototype.flatten(prefix?: string): {prefix: string; node: Node;}[];`
 
 Flatten all children names with prefix.
+You can jump the root node by checking the `prefix` property or bypassing the first node.
 
 ```typescript
 (() => {
@@ -246,18 +250,20 @@ Flatten all children names with prefix.
 	console.log(root.flatten());
 })();
 /*
-[ 'alpha', 'alpine' ]
+[
+  { prefix: '', node: Node { c: [Array], n: 'alp' } },
+  { prefix: 'alp', node: Node { c: [], n: 'ha' } },
+  { prefix: 'alp', node: Node { c: [], n: 'ine' } }
+]
 */
 ```
 
-### EXPERIMENTAL `lookup: (root: Node, x: string, processor: TLookupProcessor, options?: ILookupOption) => TDescribleNode[]`
+### Experimental unoptimized `lookup: (root: Node, x: string) => ILookupIntermediateElement[]`
 
-Finds all occurances on based on `TLookupProcessor` typed function.
-We provide some functions for basic lookup operation in tree structure.
-
-- (Experimental) `lookupProcessorByPrefixingToken` for `startsWith`
-- (Experimental) `lookupProcessorByTrailingToken` for `endsWith`
-- (Experimental) `lookupProcessorByIntermediateToken` for `includes`
+Find by pattern with asterick character.
+Note that functions requiring backward search like intermediate token or trailing token are not optimized.
+You need to use `Node.prototype.find` and loop them for performance reason.
+Internally, more iteration would be caused for now.
 
 ```typescript
 (() => {
@@ -266,9 +272,12 @@ We provide some functions for basic lookup operation in tree structure.
 	root.insert('alpine');
 	root.insert('alpha');
 
-	console.log(lookup(root, 'al', lookupProcessorByPrefixingToken, {offset: 0}));
+	console.log(lookup(root, 'al*'));
 })();
 /*
-[ { node: Node { c: [Array], n: 'alp' }, from: 0, name: 'alp' } ]
+[
+  { node: Node { c: [], n: 'ha' }, prefix: 'alp', offset: 2 },
+  { node: Node { c: [], n: 'ine' }, prefix: 'alp', offset: 2 }
+]
 */
 ```

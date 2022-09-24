@@ -37,16 +37,16 @@ export class Node {
 	}
 
 	insert(x: string) {
-		const {found, at, x: part} = this.find(x);
+		const {found, parent, x: part} = this.find(x);
 
 		if (found) {
 			return;
 		}
 
-		const overlaps = at.overlap(part);
+		const overlaps = parent.overlap(part);
 
 		if (!overlaps.length) {
-			at.add(new Node(part));
+			parent.add(new Node(part));
 
 			return;
 		}
@@ -54,28 +54,28 @@ export class Node {
 		const edge = Math.min(...overlaps.map(overlap => overlap.size));
 		const key = part.slice(0, edge);
 
-		const parent = new Node(key);
+		const branch = new Node(key);
 
-		parent.insert(part.slice(edge));
+		branch.insert(part.slice(edge));
 
 		for (let i = 0; i < overlaps.length; i++) {
-			const removed = at.remove(overlaps[i].node.n);
+			const removed = parent.remove(overlaps[i].node.n);
 
 			if (removed) {
 				removed.n = removed.n.slice(edge);
 
-				parent.add(removed);
+				branch.add(removed);
 			}
 		}
 
-		at.add(parent);
+		parent.add(branch);
 	}
 
 	delete(x: string) {
-		const {found, at, x: key} = this.find(x);
+		const {found, parent, x: key} = this.find(x);
 
 		if (found) {
-			at.remove(key);
+			parent.remove(key);
 		}
 	}
 
@@ -106,17 +106,19 @@ export class Node {
 			if (!node) {
 				return {
 					found: false,
-					at: root,
+					node: null,
+					parent: root,
 					x,
-				};
+				} as const;
 			}
 
 			if (node.is(x)) {
 				return {
 					found: true,
-					at: root,
+					node,
+					parent: root,
 					x,
-				};
+				} as const;
 			}
 
 			x = x.slice(node.n.length);
@@ -154,11 +156,10 @@ export class Node {
 	}
 
 	flatten(prefix: string = '') {
-		const keys: string[] = [];
 		const entries: { prefix: string, node: Node }[] = [{prefix, node: this}];
 
-		for (; ;) {
-			const entry = entries.shift();
+		for (let i = 0; i < entries.length; i++) {
+			const entry = entries[i];
 
 			if (!entry) {
 				break;
@@ -166,100 +167,133 @@ export class Node {
 
 			const {prefix: localPrefix, node} = entry;
 
-			if (!node.c.length) {
-				keys.push(localPrefix + node.n);
+			entries.push(...node.c.map(child => ({prefix: localPrefix + node.n, node: child})));
+		}
+
+		return entries.slice(1);
+	}
+}
+
+interface ILookupIntermediateElement {
+	node: Node,
+	prefix: string
+	offset: number
+}
+
+export const lookup = (root: Node, x: string) => {
+	const entries: ILookupIntermediateElement[] = [{node: root, prefix: '', offset: 0}];
+	const matches: ILookupIntermediateElement[] = [];
+
+	while (entries.length) {
+		// Anti-double check for TypeScript
+		const entry = entries.shift() as ILookupIntermediateElement;
+
+		if (!entry.node.n) {
+			const children = entry.node.c.map(child => ({
+				node: child,
+				prefix: entry.prefix,
+				offset: entry.offset,
+			}));
+
+			entries.push(...children);
+
+			continue;
+		}
+
+		const asterick = x.indexOf('*', entry.offset + 1);
+		let border = asterick;
+
+		// If there is no more asterick
+		if (asterick < 0) {
+			// Perform full search
+			border = x.length;
+		}
+
+		// If current character is not asterick
+		if (x[entry.offset] !== '*') {
+			// Perform search to asterick
+			const token = x.slice(entry.offset, border);
+
+			if (token === entry.node.n) {
+				matches.push(entry);
 
 				continue;
 			}
 
-			entries.push(...node.c.map(child => ({prefix: localPrefix + node.n, node: child})));
-		}
+			if (
+				!token.startsWith(entry.node.n)
+				&& !entry.node.n.startsWith(token)
+			) {
+				continue;
+			}
 
-		return keys;
-	}
-}
+			const children = entry.node.c.map(child => ({
+				node: child,
+				prefix: entry.prefix + entry.node.n,
+				offset: entry.offset + entry.node.n.length - 1,
+			}));
 
-export type TDescribleNode = { node: Node, from: number, name: string }
+			entries.push(...children);
 
-// eslint-disable-next-line no-unused-vars
-export type TLookupProcessor = (candicates: TDescribleNode[], matches: TDescribleNode[], candicate: TDescribleNode, x: string) => void
-
-export interface ILookupOption {
-	offset: number,
-}
-
-export const lookup = (
-	root: Node,
-	x: string,
-	processor: TLookupProcessor,
-	options: ILookupOption = {
-		offset: 0,
-	},
-) => {
-	const matches: TDescribleNode[] = [];
-	const candicates: TDescribleNode[] = [{node: root, from: options.offset, name: x.slice(0, options.offset)}];
-
-	for (; ;) {
-		const candicate = candicates.shift();
-
-		if (!candicate) {
-			break;
-		}
-
-		processor(candicates, matches, candicate, x);
-	}
-
-	return matches;
-};
-
-export const lookupProcessorByPrefixingToken: TLookupProcessor = (candicates, matches, candicate, x) => {
-	const {node, from, name} = candicate;
-	const part = x.slice(from);
-
-	for (let i = 0; i < node.c.length; i++) {
-		if (
-			!node.c[i].n.startsWith(part)
-			&& !part.startsWith(node.c[i].n)
-		) {
 			continue;
 		}
 
-		const remaining = part.length - node.c[i].n.length;
+		// If current character is asterick
+		if (!x[entry.offset + 1]) {
+			matches.push(entry);
 
-		if (remaining > 0) {
-			candicates.push({node: node.c[i], from: from + remaining, name: name + node.c[i].n});
-		} else {
-			matches.push({node: node.c[i], from, name: name + node.c[i].n});
+			continue;
+		}
+
+		const token = x.slice(entry.offset + 1, border);
+		const locals: ILookupIntermediateElement[] = [entry];
+
+		// If there is no more asterick
+		if (asterick < 0) {
+			// Perform trailing search
+			while (locals.length) {
+				const local = locals.shift() as ILookupIntermediateElement;
+
+				const children = local.node.c.map(child => ({
+					node: child,
+					prefix: local.prefix + local.node.n,
+					offset: local.offset,
+				}));
+
+				locals.push(...children);
+
+				if (
+					!local.node.c.length
+					&& (local.prefix + local.node.n).endsWith(token)
+				) {
+					matches.push(local);
+				}
+			}
+
+			continue;
+		}
+
+		// If there is asterick in future
+		// Perform intermediate search
+		while (locals.length) {
+			// Anti-double check for TypeScript
+			const local = locals.shift() as ILookupIntermediateElement;
+
+			if ((entry.prefix + entry.node.n).includes(token)) {
+				matches.push(entry);
+
+				continue;
+			}
+
+			const children = local.node.c.map(child => ({
+				node: child,
+				prefix: local.prefix + local.node.n,
+				offset: local.offset,
+			}));
+
+			locals.push(...children);
 		}
 	}
-};
 
-export const lookupProcessorByTrailingToken: TLookupProcessor = (candicates, matches, candicate, x) => {
-	const {node, from, name} = candicate;
-	const part = x.slice(from);
-
-	for (let i = 0; i < node.c.length; i++) {
-		if (node.c[i].n.endsWith(part)) {
-			matches.push({node: node.c[i], from, name: name + node.c[i].n});
-		} else if (part.startsWith(node.c[i].n)) {
-			candicates.push({node: node.c[i], from: from + node.c[i].n.length, name: name + node.c[i].n});
-		} else {
-			candicates.push({node: node.c[i], from, name: name + node.c[i].n});
-		}
-	}
-};
-
-export const lookupProcessorByIntermediateToken: TLookupProcessor = (candicates, matches, candicate, x) => {
-	const {node, from, name} = candicate;
-
-	for (let i = 0; i < node.c.length; i++) {
-		if (
-			(!from && node.c[i].n.includes(x))
-			|| (from && node.c[i].n.startsWith(x.slice(from)))
-		) {
-			matches.push({node: node.c[i], from, name: name + node.c[i].n});
-		} else {
-			candicates.push({node: node.c[i], from, name: name + node.c[i].n});
-		}
-	}
+	return matches;
 };

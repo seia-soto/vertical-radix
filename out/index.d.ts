@@ -12,27 +12,30 @@ export declare class Node {
     remove(key: string): Node;
     is(x: string): boolean;
     find(x: string): {
-        found: boolean;
-        at: Node;
-        x: string;
+        readonly found: false;
+        readonly node: any;
+        readonly parent: Node;
+        readonly x: string;
+    } | {
+        readonly found: true;
+        readonly node: Node;
+        readonly parent: Node;
+        readonly x: string;
     };
     overlap(x: string): {
         node: Node;
         size: number;
     }[];
     stringify(beautify?: boolean): string;
-    flatten(prefix?: string): string[];
+    flatten(prefix?: string): {
+        prefix: string;
+        node: Node;
+    }[];
 }
-export declare type TDescribleNode = {
+interface ILookupIntermediateElement {
     node: Node;
-    from: number;
-    name: string;
-};
-export declare type TLookupProcessor = (candicates: TDescribleNode[], matches: TDescribleNode[], candicate: TDescribleNode, x: string) => void;
-export interface ILookupOption {
+    prefix: string;
     offset: number;
 }
-export declare const lookup: (root: Node, x: string, processor: TLookupProcessor, options?: ILookupOption) => TDescribleNode[];
-export declare const lookupProcessorByPrefixingToken: TLookupProcessor;
-export declare const lookupProcessorByTrailingToken: TLookupProcessor;
-export declare const lookupProcessorByIntermediateToken: TLookupProcessor;
+export declare const lookup: (root: Node, x: string) => ILookupIntermediateElement[];
+export {};
