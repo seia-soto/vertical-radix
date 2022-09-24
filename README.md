@@ -56,7 +56,7 @@ This does not include parent name, or prefix.
 
 This children of the node.
 
-### `Node.prototype.constructorconstructor(key?: string, structure?: INodeStringified)`
+### `Node.prototype.constructor(key?: string, structure?: INodeStringified)`
 
 Creates new trie. You can strictly specify empty string for root node.
 
@@ -235,7 +235,7 @@ Find all overlapping entries with its overlap size of the node name or key.
 
 Stringify the tree assuming the `Node` is the root entry.
 
-### `Node.prototype.flatten(prefix?: string): {prefix: string; node: Node;}[];`
+### `Node.prototype.flatten(prefix?: string): {prefix: string; node: Node;}[]`
 
 Flatten all children names with prefix.
 You can jump the root node by checking the `prefix` property or bypassing the first node.
