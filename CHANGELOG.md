@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.4.0](https://github.com/seia-soto/vertical-radix/compare/v1.3.1...v1.4.0) (2022-11-05)
+
+
+### Features
+
+* support offset in prototype.find ([0b718d1](https://github.com/seia-soto/vertical-radix/commit/0b718d15f723154aa9b8f99714f5fc58176e5f7b))
+
 ### [1.3.1](https://github.com/seia-soto/vertical-radix/compare/v1.3.0...v1.3.1) (2022-09-24)
 
 
