@@ -99,6 +99,7 @@ export class Node {
 
 	find(x: string) {
 		let root: Node = this;
+		let offset = 0;
 
 		for (; ;) {
 			const node = root.c.find(child => x.startsWith(child.n));
@@ -109,19 +110,25 @@ export class Node {
 					node: null,
 					parent: root,
 					x,
+					offset,
 				} as const;
 			}
 
-			if (node.is(x)) {
+			// Better implementation of `node.is` as we used `startsWith` there.
+			if (x.length === node.n.length) {
 				return {
 					found: true,
 					node,
 					parent: root,
 					x,
+					offset,
 				} as const;
 			}
 
-			x = x.slice(node.n.length);
+			const len = node.n.length;
+
+			x = x.slice(len);
+			offset += len;
 			root = node;
 		}
 	}

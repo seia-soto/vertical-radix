@@ -23,11 +23,13 @@ export declare class Node {
         readonly node: any;
         readonly parent: Node;
         readonly x: string;
+        readonly offset: number;
     } | {
         readonly found: true;
         readonly node: Node;
         readonly parent: Node;
         readonly x: string;
+        readonly offset: number;
     };
     overlap(x: string): {
         node: Node;
